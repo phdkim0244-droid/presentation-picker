@@ -288,6 +288,36 @@
   }
   .bar.zero { background: transparent; color: var(--text-light); justify-content: flex-start; padding-left: 12px; }
   .stat-row .s-date { font-size: 16px; color: var(--text-light); text-align: right; }
+  .stat-row .s-date.clickable {
+    cursor: pointer;
+    color: var(--blue);
+    text-decoration: underline dotted currentColor 2px;
+    text-underline-offset: 4px;
+  }
+  .stat-row .s-date.clickable:hover { filter: brightness(0.9); }
+
+  /* ===== 발표 이력 모달 ===== */
+  #historyModalOverlay {
+    position: fixed; inset: 0;
+    background: rgba(68, 64, 60, 0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .history-modal { max-width: 460px; width: 100%; max-height: 85vh; overflow-y: auto; }
+  .history-modal h2 { font-size: 26px; margin-bottom: 4px; word-break: keep-all; }
+  .history-count { font-size: 18px; color: var(--primary-dark); font-weight: 800; margin-bottom: 16px; }
+  .history-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: #fafaf9; border-radius: 14px;
+    padding: 12px 18px; margin-bottom: 8px;
+  }
+  .history-row .h-num {
+    font-size: 16px; font-weight: 800; color: var(--primary-dark);
+    background: #ffedd5; border-radius: 999px; padding: 4px 12px;
+  }
+  .history-row .h-dt { font-size: 19px; font-weight: 700; }
+  .history-empty { font-size: 18px; color: var(--text-light); padding: 16px 0; text-align: center; }
   .danger-zone { margin-top: 28px; padding-top: 20px; border-top: 3px solid #f5f5f4; display: flex; flex-wrap: wrap; gap: 10px; }
 
   /* ===== 학급 관리 모달 ===== */
@@ -575,6 +605,16 @@
   </div>
 </div>
 
+<!-- ===== 발표 이력 모달 ===== -->
+<div id="historyModalOverlay" class="hidden">
+  <div class="card history-modal">
+    <h2 id="historyModalName"></h2>
+    <p class="history-count" id="historyModalCount"></p>
+    <div id="historyModalList"></div>
+    <button class="btn-mid modal-close" id="historyCloseBtn">닫기</button>
+  </div>
+</div>
+
 <!-- ===== 학급 관리 모달 ===== -->
 <div id="modalOverlay" class="hidden">
   <div class="card">
@@ -626,7 +666,8 @@
       <h3>📊 통계 <span class="help-tag">교사용</span></h3>
       <p>학생별 발표 횟수를 한눈에 볼 수 있어요. 처음 비밀번호는 <b>1234</b>이며 <b>🔑 비밀번호 변경</b>으로 바꿀 수 있어요.</p>
       <ul>
-        <li><b>📥 CSV 다운로드</b>로 발표 기록을 엑셀로 받을 수 있어요.</li>
+        <li>학생 줄의 <b>📜 이력</b>을 누르면 그 학생이 발표한 <b>날짜·시간</b>을 모두 볼 수 있어요.</li>
+        <li><b>📥 CSV 다운로드</b>로 발표 날짜·시간 기록을 엑셀로 받을 수 있어요.</li>
         <li><b>💾 데이터 백업 / 📂 복원</b>으로 다른 기기에서도 이어서 쓸 수 있어요.</li>
       </ul>
     </div>
@@ -708,6 +749,10 @@ function todayStr() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+function nowTimeStr() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
 function defaultSettings() {
   return { fairMode: false, excludeToday: false, soundOn: true };
 }
@@ -761,8 +806,12 @@ function recordPresentation(studentId) {
   const students = getStudents();
   const st = students.find(s => s.id === studentId);
   if (!st) return;
+  const d = todayStr(), t2 = nowTimeStr();
   st.count = (st.count || 0) + 1;
-  st.lastPresentedDate = todayStr();
+  st.lastPresentedDate = d;
+  st.lastPresentedTime = t2;
+  if (!Array.isArray(st.history)) st.history = [];
+  st.history.push({ d, t: t2 });
   setStudents(students);
   const t = getTodayPicked();
   if (!t.ids.includes(studentId)) t.ids.push(studentId);
@@ -775,7 +824,10 @@ function undoPresentation(studentId) {
   const st = students.find(s => s.id === studentId);
   if (!st) return;
   st.count = Math.max(0, (st.count || 0) - 1);
-  if (st.count === 0) st.lastPresentedDate = null;
+  if (Array.isArray(st.history) && st.history.length) st.history.pop();
+  const last = (Array.isArray(st.history) && st.history.length) ? st.history[st.history.length - 1] : null;
+  st.lastPresentedDate = last ? last.d : null;
+  st.lastPresentedTime = last ? last.t : null;
   setStudents(students);
   const t = getTodayPicked();
   t.ids = t.ids.filter(x => x !== studentId);
@@ -1111,6 +1163,48 @@ function closeSeatModal() {
   document.getElementById('seatModalOverlay').classList.add('hidden');
 }
 
+/* 학생별 발표 날짜·시간 이력 보기 */
+function openHistoryModal(studentId) {
+  const st = getStudents().find(s => s.id === studentId);
+  if (!st) return;
+  document.getElementById('historyModalName').textContent = '📜 ' + st.name + ' 발표 이력';
+  document.getElementById('historyModalCount').textContent = '총 ' + (st.count || 0) + '회 발표';
+
+  let entries = Array.isArray(st.history) ? st.history.slice() : [];
+  // 예전 데이터(이력 없이 횟수만 있는 경우) 보완
+  if (entries.length === 0 && (st.count || 0) > 0 && st.lastPresentedDate) {
+    entries = [{ d: st.lastPresentedDate, t: st.lastPresentedTime || '' }];
+  }
+
+  const listEl = document.getElementById('historyModalList');
+  listEl.innerHTML = '';
+  if (entries.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'history-empty';
+    p.textContent = '아직 발표한 기록이 없어요.';
+    listEl.appendChild(p);
+  } else {
+    entries.slice().reverse().forEach((h, i) => {
+      const num = entries.length - i; // 최신이 위로
+      const row = document.createElement('div');
+      row.className = 'history-row';
+      const n = document.createElement('span');
+      n.className = 'h-num';
+      n.textContent = num + '회차';
+      const dt = document.createElement('span');
+      dt.className = 'h-dt';
+      dt.textContent = h.d + (h.t ? ' · ' + h.t : '');
+      row.appendChild(n);
+      row.appendChild(dt);
+      listEl.appendChild(row);
+    });
+  }
+  document.getElementById('historyModalOverlay').classList.remove('hidden');
+}
+function closeHistoryModal() {
+  document.getElementById('historyModalOverlay').classList.add('hidden');
+}
+
 function renderStudents() {
   const students = getStudents();
   const today = todayStr();
@@ -1266,7 +1360,15 @@ function renderStats() {
 
     const dateEl = document.createElement('div');
     dateEl.className = 's-date';
-    dateEl.textContent = s.lastPresentedDate ? '마지막 발표: ' + s.lastPresentedDate : '발표 기록 없음';
+    if (s.lastPresentedDate) {
+      dateEl.textContent = '마지막: ' + s.lastPresentedDate +
+        (s.lastPresentedTime ? ' ' + s.lastPresentedTime : '') + ' · 📜 이력';
+      dateEl.classList.add('clickable');
+      dateEl.title = '클릭하면 발표 날짜·시간 이력을 볼 수 있어요';
+      dateEl.addEventListener('click', () => openHistoryModal(s.id));
+    } else {
+      dateEl.textContent = '발표 기록 없음';
+    }
     row.appendChild(dateEl);
 
     listEl.appendChild(row);
@@ -1319,6 +1421,7 @@ function switchClass(id) {
   pendingWinner = null;
   seatSelIdx = null;
   closeSeatModal();
+  closeHistoryModal();
   resetPickUI();
   renderAll();
   renderClassModal();
@@ -1424,8 +1527,18 @@ function blobDownload(content, filename, type) {
 }
 
 function downloadCSV() {
-  const rows = [['이름', '발표 횟수', '마지막 발표일']];
-  getStudents().forEach(s => rows.push([s.name, s.count || 0, s.lastPresentedDate || '']));
+  const rows = [['이름', '회차', '발표 날짜', '발표 시간']];
+  getStudents().forEach(s => {
+    const hist = Array.isArray(s.history) ? s.history : [];
+    if (hist.length > 0) {
+      hist.forEach((h, i) => rows.push([s.name, i + 1, h.d, h.t || '']));
+    } else if ((s.count || 0) > 0) {
+      // 예전 데이터: 시간 이력이 없으면 횟수·마지막 날짜만
+      rows.push([s.name, s.count || 0, s.lastPresentedDate || '', s.lastPresentedTime || '']);
+    } else {
+      rows.push([s.name, 0, '', '']);
+    }
+  });
   const csv = '﻿' + rows
     .map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(','))
     .join('\r\n');
@@ -1648,6 +1761,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('sortDescBtn').addEventListener('click', () => { statSort = 'desc'; renderStats(); });
   document.getElementById('sortAscBtn').addEventListener('click', () => { statSort = 'asc'; renderStats(); });
   document.getElementById('csvBtn').addEventListener('click', downloadCSV);
+
+  // 발표 이력 모달 닫기
+  document.getElementById('historyCloseBtn').addEventListener('click', closeHistoryModal);
+  document.getElementById('historyModalOverlay').addEventListener('click', e => {
+    if (e.target.id === 'historyModalOverlay') closeHistoryModal();
+  });
   document.getElementById('changePwBtn').addEventListener('click', () => {
     const pw1 = prompt('새 비밀번호를 입력하세요 (이 학급의 통계 화면 잠금용)');
     if (pw1 === null) return;
@@ -1668,7 +1787,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!confirm(`'${cur.name}'의 모든 발표 기록을 초기화할까요?\n(학생 명단은 그대로 남고, 발표 횟수만 0으로 돌아갑니다)`)) return;
     if (!confirm('정말 초기화할까요? 되돌릴 수 없어요! (마지막 확인)')) return;
     const ss = getStudents();
-    ss.forEach(s => { s.count = 0; s.lastPresentedDate = null; });
+    ss.forEach(s => { s.count = 0; s.lastPresentedDate = null; s.lastPresentedTime = null; s.history = []; });
     setStudents(ss);
     setTodayPicked({ date: todayStr(), ids: [] });
     alert('발표 기록을 초기화했어요.');
