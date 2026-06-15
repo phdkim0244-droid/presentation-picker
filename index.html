@@ -310,6 +310,47 @@
   .modal-add input { flex: 1; min-width: 180px; }
   .modal-close { margin-top: 20px; width: 100%; }
 
+  /* ===== 사용 방법 안내 모달 ===== */
+  #helpModalOverlay {
+    position: fixed; inset: 0;
+    background: rgba(68, 64, 60, 0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  #helpModalOverlay .card { max-width: 640px; width: 100%; max-height: 88vh; overflow-y: auto; }
+  #helpModalOverlay h2 { font-size: 28px; margin-bottom: 18px; }
+  .help-section {
+    background: #fafaf9;
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+  }
+  .help-section h3 { font-size: 21px; margin-bottom: 8px; color: var(--primary-dark); }
+  .help-section p { font-size: 18px; line-height: 1.6; color: var(--text); }
+  .help-section ul { margin: 8px 0 0; padding-left: 22px; }
+  .help-section li { font-size: 18px; line-height: 1.7; }
+  .help-section b { color: var(--primary-dark); }
+  .help-tag {
+    font-size: 14px; font-weight: 800; vertical-align: middle;
+    background: #fee2e2; color: var(--red);
+    border-radius: 999px; padding: 3px 10px; margin-left: 6px;
+  }
+  .help-note {
+    font-size: 17px; line-height: 1.6;
+    background: #fff7ed; border: 2px dashed #fed7aa;
+    border-radius: 16px; padding: 14px 18px; margin-top: 4px;
+  }
+
+  /* ===== 만든이 / 카피라이트 ===== */
+  .app-footer {
+    text-align: center;
+    font-size: 16px;
+    color: var(--text-light);
+    padding: 28px 16px 32px;
+  }
+  .app-footer b { color: var(--primary-dark); }
+
   /* ===== 자리 발표 (책상 배치도) ===== */
   .seat-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
   .seat-cols-label { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; }
@@ -408,6 +449,7 @@
     <span class="class-name" id="headerClassName"></span>
     <span class="spacer"></span>
     <select id="classSelect" title="학급 전환"></select>
+    <button class="btn-sm" id="helpBtn" title="사용 방법 안내">❓ 사용법</button>
     <button class="btn-sm" id="manageClassBtn">⚙️ 학급 관리</button>
   </header>
 
@@ -545,6 +587,60 @@
     <button class="btn-mid modal-close" id="modalCloseBtn">닫기</button>
   </div>
 </div>
+
+<!-- ===== 사용 방법 안내 모달 ===== -->
+<div id="helpModalOverlay" class="hidden">
+  <div class="card help-modal">
+    <h2>❓ 사용 방법 안내</h2>
+
+    <div class="help-section">
+      <h3>🚀 시작하기</h3>
+      <p>처음 열면 <b>우리 학급</b>을 만들고, <b>👧 학생 관리</b> 탭에서 학생 이름을 추가하세요. 명단을 한꺼번에 넣고 싶다면 <b>📋 일괄 등록</b>에 쉼표(,)나 줄바꿈으로 붙여넣으면 됩니다.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>🎲 뽑기</h3>
+      <p><b>뽑기 시작!</b>을 누르면 이름이 돌아가다가 발표자가 정해져요. 마음에 들면 <b>✅ 발표 확정</b>, 아니면 <b>🔄 다시 뽑기</b>를 누르세요.</p>
+      <ul>
+        <li><b>⚖️ 공평 모드</b>: 발표를 적게 한 학생이 더 잘 뽑히도록 해요.</li>
+        <li><b>🙅 오늘 발표한 학생 제외</b>: 오늘 이미 발표한 학생은 뽑히지 않아요.</li>
+        <li><b>🔊</b> 버튼으로 효과음을 켜고 끌 수 있어요.</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>🪑 자리 발표</h3>
+      <p>실제 교실 자리 배치도예요. 열(분단) 수와 줄을 조절해 우리 반 모양에 맞추세요.</p>
+      <ul>
+        <li><b>🎤 발표 기록 모드</b>: 발표한 학생 자리를 누르면 발표 횟수를 바로 기록해요.</li>
+        <li><b>🔀 자리 바꾸기 모드</b>: 학생을 누른 뒤 옮길 자리(빈 칸·다른 학생)를 누르면 자리가 바뀌어요.</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>👧 학생 관리</h3>
+      <p>이름 추가·수정·삭제를 할 수 있어요. <b>오늘 결석</b>은 그날만 적용되고, <b>참여 제외</b>는 전학·장기결석처럼 한동안 뽑기에서 빼둘 때 사용하세요. 이름을 클릭하면 바로 수정됩니다.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>📊 통계 <span class="help-tag">교사용</span></h3>
+      <p>학생별 발표 횟수를 한눈에 볼 수 있어요. 처음 비밀번호는 <b>1234</b>이며 <b>🔑 비밀번호 변경</b>으로 바꿀 수 있어요.</p>
+      <ul>
+        <li><b>📥 CSV 다운로드</b>로 발표 기록을 엑셀로 받을 수 있어요.</li>
+        <li><b>💾 데이터 백업 / 📂 복원</b>으로 다른 기기에서도 이어서 쓸 수 있어요.</li>
+      </ul>
+    </div>
+
+    <p class="help-note">💡 모든 자료는 이 브라우저(기기)에만 저장돼요. 기기를 바꾸거나 정리하기 전에는 <b>데이터 백업</b>을 꼭 해두세요!</p>
+
+    <button class="btn-mid modal-close btn-primary" id="helpCloseBtn">알겠어요!</button>
+  </div>
+</div>
+
+<!-- ===== 만든이 / 카피라이트 ===== -->
+<footer class="app-footer">
+  © 2026 <b>강진중앙초등학교 김영대 선생님</b> 제작 · 🎤 발표 학생 뽑기
+</footer>
 
 <script>
 'use strict';
@@ -1411,6 +1507,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // 헤더
   document.getElementById('classSelect').addEventListener('change', e => switchClass(e.target.value));
   document.getElementById('manageClassBtn').addEventListener('click', openModal);
+
+  // 사용 방법 안내
+  const helpOverlay = document.getElementById('helpModalOverlay');
+  document.getElementById('helpBtn').addEventListener('click', () => helpOverlay.classList.remove('hidden'));
+  document.getElementById('helpCloseBtn').addEventListener('click', () => helpOverlay.classList.add('hidden'));
+  helpOverlay.addEventListener('click', e => {
+    if (e.target.id === 'helpModalOverlay') helpOverlay.classList.add('hidden');
+  });
 
   // 탭
   document.querySelectorAll('nav button').forEach(b => {
