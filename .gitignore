@@ -3,3 +3,16 @@
 .env
 .env.local
 .env.*.local
+
+# 운영체제가 만드는 잡동사니 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 편집기/도구 개인 설정
+.vscode/
+.idea/
+.claude/settings.local.json
+
+# 로그
+*.log
